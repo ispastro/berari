@@ -1,0 +1,62 @@
+[
+  {
+    "job_hash": "90d7ded94f4c3977ccc8502241a8d89d3713922f3863d97c3fc0de87f06bcc31",
+    "title": "Pilot Training",
+    "source": "Ethiopian Airlines Official Careers",
+    "category": "PILOT",
+    "url": "https://eau.edu.et/admission/applyonline",
+    "deadline": null,
+    "summary": "Pilot Training",
+    "first_seen_at": "2026-10-05T15:17:10.197436+00:00"
+  },
+  {
+    "job_hash": "079da9c749c65b50bd4be364e194d2eb0639900cc1dcf69208e3809fc56ee0ff",
+    "title": "Commercial Pilot License",
+    "source": "Ethiopian Aviation University",
+    "category": "PILOT",
+    "url": "https://eau.edu.et/programmes/commercial-pilot-license-(cpl)",
+    "deadline": null,
+    "summary": "Commercial Pilot License Explore",
+    "first_seen_at": "2026-10-05T15:17:12.496262+00:00"
+  },
+  {
+    "job_hash": "e969acb3022185f91eb9d772c345b031a86a6f2aa83099781f594e1a6077dc9d",
+    "title": "Aircraft Maintenance Training",
+    "source": "Ethiopian Airlines Official Careers",
+    "category": "MAINTENANCE",
+    "url": "https://eau.edu.et/admission/applyonline",
+    "deadline": null,
+    "summary": "Aircraft Maintenance Training",
+    "first_seen_at": "2026-10-05T15:41:27.397111+00:00"
+  },
+  {
+    "job_hash": "024dc7567a1d831dc0f8bd60ace5102b09303d6ec197fbde4194d3face15e1d8",
+    "title": "Cabin Crew/Air Hostess Training",
+    "source": "Ethiopian Airlines Official Careers",
+    "category": "CABIN_CREW",
+    "url": "https://eau.edu.et/admission/applyonline",
+    "deadline": null,
+    "summary": "Cabin Crew/Air Hostess Training",
+    "first_seen_at": "2026-10-05T15:41:27.399666+00:00"
+  },
+  {
+    "job_hash": "3e59adcaec11057b76c57f94cb7629ab050cab8efee3d43fd8ad614026dc77e6",
+    "title": "Aircraft Maintenance Training",
+    "source": "Ethiopian Aviation University",
+    "category": "MAINTENANCE",
+    "url": "https://eau.edu.et/programmes/aircraft-maintenance-technical-(amt)",
+    "deadline": null,
+    "summary": "Aircraft Maintenance Training",
+    "first_seen_at": "2026-10-05T15:41:30.158950+00:00"
+  },
+  {
+    "job_hash": "43b1b8d353da8d7b2f6fab2e0a26089169de9ac2383ff9feb3c64bf22c4da0b4",
+    "title": "Cabin Crew",
+    "source": "Ethiopian Aviation University",
+    "category": "CABIN_CREW",
+    "url": "https://eau.edu.et/programmes/cabin-crew-(flight-attendant)",
+    "deadline": null,
+    "summary": "Cabin Crew",
+    "first_seen_at": "2026-10-05T15:41:30.161325+00:00"
+  }
+]

@@ -1,0 +1,73 @@
+name: Ethiopian Airlines Career Monitor (Berari)
+
+on:
+  schedule:
+    # Run automatically every 30 minutes
+    - cron: '*/30 * * * *'
+  workflow_dispatch: # Allows clicking "Run workflow" manually in GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  check-vacancies:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: ✈️ Run Berari Vacancy Scan
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ENABLE_CORPORATE_CAREERS: "true"
+          ENABLE_UNIVERSITY: "false"
+          ENABLE_ETHIOJOBS: "false"
+        run: |
+          python bot.py --check-once
+
+      - name: 📊 Generate GitHub Step Summary
+        run: |
+          echo "## 🇪🇹 Berari (በራሪ) — Ethiopian Airlines Scan Report" >> $GITHUB_STEP_SUMMARY
+          echo "Scan finished successfully at: **$(date -u)**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          from database.db import Database
+          from config import DATABASE_PATH
+          db = Database(DATABASE_PATH)
+          stats = db.get_stats()
+          recent = db.get_recent_vacancies(limit=5)
+          print('| Metric | Status / Count |')
+          print('| :--- | :--- |')
+          print(f'| 💼 Total Active Vacancies | **{stats[\"total_vacancies\"]}** |')
+          print(f'| ✈️ Pilot Trainee / CPL | **{stats[\"pilot_vacancies\"]}** |')
+          print(f'| 🧑‍✈️ Cabin Crew | **{stats[\"cabin_vacancies\"]}** |')
+          print(f'| 🔧 Aircraft Maintenance | **{stats[\"maintenance_vacancies\"]}** |')
+          print(f'| ⏱️ Last Scan Timestamp | \`{stats[\"last_scrape_time\"]}\` |')
+          " >> $GITHUB_STEP_SUMMARY
+
+      - name: 💾 Commit & Push Vacancy State
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/seen_vacancies.json
+          if git diff --staged --quiet; then
+            echo "No new vacancy state changes to commit."
+          else
+            git commit -m "chore(data): sync seen vacancies state [skip ci]"
+            git push origin main
+          fi

@@ -32,6 +32,7 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 DATABASE_PATH = DATA_DIR / "avaitor.db"
+SEEN_VACANCIES_JSON = DATA_DIR / "seen_vacancies.json"
 
 # Scraper Endpoints
 ET_CAREERS_URL = "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies"

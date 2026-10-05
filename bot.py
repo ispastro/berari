@@ -15,6 +15,7 @@ from config import (
     ENABLE_CORPORATE_CAREERS,
     ENABLE_UNIVERSITY,
     ENABLE_ETHIOJOBS,
+    SEEN_VACANCIES_JSON,
 )
 from database.db import Database
 from scrapers.base import VacancyItem
@@ -46,6 +47,8 @@ class AvaitorApp:
         # Auto-subscribe default chat id if configured in .env
         if TELEGRAM_CHAT_ID:
             self.db.add_subscriber(TELEGRAM_CHAT_ID, username="Admin", first_name="Admin", track="ALL")
+        # Load persisted vacancies state from JSON if running in stateless environments (e.g. GitHub Actions)
+        self.db.import_from_json(SEEN_VACANCIES_JSON)
 
     def run_check_cycle(self) -> List[Dict[str, Any]]:
         """
@@ -102,6 +105,9 @@ class AvaitorApp:
                     self.db.mark_notified(vac["job_hash"])
         else:
             logger.info("Scan finished: No new aviation vacancies detected.")
+
+        # Persist updated vacancies to JSON file for GitHub Actions state tracking
+        self.db.export_to_json(SEEN_VACANCIES_JSON)
 
         logger.info("==================================================")
         return new_vacancies_found

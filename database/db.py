@@ -1,5 +1,6 @@
 import sqlite3
 import hashlib
+import json
 import logging
 from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
@@ -265,3 +266,46 @@ class Database:
             cursor = conn.cursor()
             cursor.execute("SELECT chat_id FROM subscribers WHERE is_active = 1")
             return [row["chat_id"] for row in cursor.fetchall()]
+
+    def export_to_json(self, json_path: Path):
+        """Export all recorded vacancies to a portable JSON file for GitHub Actions sync."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT job_hash, title, source, category, url, deadline, summary, first_seen_at FROM vacancies ORDER BY first_seen_at ASC")
+            items = [dict(row) for row in cursor.fetchall()]
+        
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(items, f, indent=2, ensure_ascii=False)
+        logger.info(f"Exported {len(items)} vacancies to {json_path}")
+
+    def import_from_json(self, json_path: Path):
+        """Load seen vacancies from JSON file into database so previous postings are remembered."""
+        if not json_path.exists():
+            return
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                items = json.load(f)
+            
+            with self._get_connection() as conn:
+                for item in items:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO vacancies (job_hash, title, source, category, url, deadline, summary, first_seen_at, last_seen_at, is_active, notified)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+                        """,
+                        (
+                            item["job_hash"],
+                            item["title"],
+                            item["source"],
+                            item.get("category", "PILOT"),
+                            item["url"],
+                            item.get("deadline"),
+                            item.get("summary"),
+                            item.get("first_seen_at", datetime.now(timezone.utc).isoformat()),
+                            item.get("first_seen_at", datetime.now(timezone.utc).isoformat()),
+                        )
+                    )
+                conn.commit()
+            logger.info(f"Loaded {len(items)} existing vacancies from {json_path}")
+        except Exception as e:
+            logger.warning(f"Could not import {json_path}: {e}")
