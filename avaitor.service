@@ -1,0 +1,15 @@
+[Unit]
+Description=Avaitor - Ethiopian Airlines Pilot Trainee Vacancy Monitor Daemon
+After=network.target
+
+[Service]
+Type=simple
+User=ecliptic_path
+WorkingDirectory=/home/ecliptic_path/Documents/Avaitor
+ExecStart=/home/ecliptic_path/Documents/Avaitor/.venv/bin/python /home/ecliptic_path/Documents/Avaitor/bot.py
+Restart=always
+RestartSec=15
+EnvironmentFile=/home/ecliptic_path/Documents/Avaitor/.env
+
+[Install]
+WantedBy=multi-user.target
