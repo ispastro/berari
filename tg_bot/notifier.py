@@ -107,7 +107,7 @@ class TelegramNotifier:
                 "deadline": "From October 10, 2026, to October 20, 2026",
             },
             "MAINTENANCE": {
-                "title": "TRAINEE - INDUSTRIAL MECHANIC",
+                "title": "TRAINEE - AIRCRAFT MAINTENANCE TECHNICIAN",
                 "location": "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)",
                 "category": "MAINTENANCE",
                 "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",

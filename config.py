@@ -59,6 +59,7 @@ TRAINEE_INDICATORS = [
 EXCLUDED_KEYWORDS = [
     "cpl",
     "commercial pilot license",
+    "industrial",
     "experienced",
     "senior",
     "captain",

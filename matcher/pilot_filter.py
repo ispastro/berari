@@ -45,13 +45,12 @@ class PilotFilter:
         if any(w in title_lower for w in ["cabin", "flight attendant", "air hostess"]):
             return "CABIN_CREW", self.extract_metadata(comb_lower)
 
-        # Aircraft Maintenance & Technician Trainee (includes industrial electricians, mechanics, and technicians)
+        # Aircraft Maintenance & Technician Trainee (AMT, Avionics, Airframe, Powerplant)
         if any(w in title_lower for w in [
-            "technician", "mechanic", "maintenance", "avionics", "engineer",
-            "airframe", "powerplant", "electrician", "electrical", "electro",
-            "machinist", "welder", "sheet metal", "instrumentation", "industrial",
-            "structure", "workshop", "overhaul"
-        ]):
+            "aircraft maintenance", "amt", "avionics", "aircraft mechanic",
+            "aircraft technician", "airframe", "powerplant", "aviation maintenance",
+            "aeronautical", "aircraft engineer", "technician", "mechanic", "maintenance"
+        ]) and "industrial" not in title_lower:
             return "MAINTENANCE", self.extract_metadata(comb_lower)
 
         # Check body text for category if title is just "Trainee"
@@ -60,9 +59,8 @@ class PilotFilter:
         if "cabin" in comb_lower:
             return "CABIN_CREW", self.extract_metadata(comb_lower)
         if any(w in comb_lower for w in [
-            "maintenance", "technician", "mechanic", "electrician", "electrical",
-            "industrial", "avionics", "engineer"
-        ]):
+            "aircraft maintenance", "amt", "avionics", "airframe", "powerplant", "aviation maintenance"
+        ]) and "industrial" not in comb_lower:
             return "MAINTENANCE", self.extract_metadata(comb_lower)
 
         # If it is confirmed to be a Trainee position, default to MAINTENANCE

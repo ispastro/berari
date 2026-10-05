@@ -36,20 +36,22 @@ class TestPilotMatcher(unittest.TestCase):
 
     def test_positive_maintenance_trainee_titles(self):
         trainee_titles = [
-            "TRAINEE - INDUSTRIAL ELECTRICIAN",
-            "TRAINEE - INDUSTRIAL MECHANIC",
             "Trainee Aircraft Maintenance Technician (AMT)",
+            "TRAINEE - AIRCRAFT MAINTENANCE TECHNICIAN",
             "Aircraft Mechanic Trainee",
             "Aviation Maintenance Engineering Trainee",
             "Avionics Technician Trainee",
-            "Trainee Technician",
+            "Trainee Aircraft Technician",
+            "Trainee AMT",
         ]
         for t in trainee_titles:
             cat, _ = self.filter.classify_vacancy(t)
-            self.assertEqual(cat, "MAINTENANCE", f"Failed to match maintenance trainee: {t}")
+            self.assertEqual(cat, "MAINTENANCE", f"Failed to match aircraft maintenance trainee: {t}")
 
     def test_excluded_non_trainee_and_cpl_titles(self):
         non_trainee = [
+            "TRAINEE - INDUSTRIAL ELECTRICIAN",
+            "TRAINEE - INDUSTRIAL MECHANIC",
             "Commercial Pilot License (CPL)",
             "Admission for Commercial Pilot License (CPL)",
             "Commercial Pilot",
@@ -68,7 +70,7 @@ class TestPilotMatcher(unittest.TestCase):
         ]
         for t in non_trainee:
             cat, _ = self.filter.classify_vacancy(t)
-            self.assertIsNone(cat, f"Incorrectly matched non-trainee/CPL title: {t}")
+            self.assertIsNone(cat, f"Incorrectly matched non-trainee/CPL/industrial title: {t}")
 
     def test_metadata_extraction(self):
         sample_text = (
@@ -94,13 +96,13 @@ class TestAlertFormat(unittest.TestCase):
         from tg_bot.notifier import TelegramNotifier
         notifier = TelegramNotifier(bot_token="mock_token")
         vac = {
-            "title": "TRAINEE - INDUSTRIAL ELECTRICIAN",
+            "title": "TRAINEE - AIRCRAFT MAINTENANCE TECHNICIAN",
             "location": "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)",
             "deadline": "From September 21, 2026, to September 25, 2026.",
             "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",
         }
         text = notifier.format_vacancy_alert(vac)
-        self.assertIn("<b>Position :</b>  <code>TRAINEE - INDUSTRIAL ELECTRICIAN</code>", text)
+        self.assertIn("<b>Position :</b>  <code>TRAINEE - AIRCRAFT MAINTENANCE TECHNICIAN</code>", text)
         self.assertIn("<b>Location :</b>  Ethiopian Airlines Head Quarter", text)
         self.assertIn("<b>Registration Date :</b>  From September 21, 2026, to September 25, 2026.", text)
         self.assertIn("href=\"https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies\"", text)
