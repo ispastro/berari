@@ -114,9 +114,9 @@ class TelegramBotHandlers:
             f"🎯 <b>Your Alert Track:</b> {TRACK_NAMES.get(user_track, user_track)}\n"
             f"👥 <b>Total Subscribers:</b> {stats['subscribers_count']}\n\n"
             "💼 <b>Active Openings Breakdown:</b>\n"
-            f"  ✈️ Pilot Trainee / CPL: {stats.get('pilot_vacancies', 0)}\n"
-            f"  🧑‍✈️ Cabin Crew: {stats.get('cabin_vacancies', 0)}\n"
-            f"  🔧 Maintenance / Tech: {stats.get('maintenance_vacancies', 0)}\n"
+            f"  ✈️ Pilot Trainee: {stats.get('pilot_vacancies', 0)}\n"
+            f"  🧑‍✈️ Cabin Crew Trainee: {stats.get('cabin_vacancies', 0)}\n"
+            f"  🔧 Maintenance Trainee: {stats.get('maintenance_vacancies', 0)}\n"
             f"  📦 Total Vacancies: {stats['total_vacancies']}\n\n"
             f"⏱️ <b>Last Scan:</b> <code>{stats['last_scrape_time']}</code>\n"
             f"🚦 <b>Last Scan Result:</b> {stats['last_scrape_status']}"
@@ -125,7 +125,7 @@ class TelegramBotHandlers:
 
     async def check(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /check command - on-demand scan."""
-        await update.message.reply_text("🔄 Initiating live scan of Ethiopian Airlines & University portals... Please wait a moment.")
+        await update.message.reply_text("🔄 Initiating live scan of Ethiopian Airlines Corporate Careers... Please wait a moment.")
         try:
             new_items = self.manual_check_callback()
             if new_items:

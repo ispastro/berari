@@ -34,15 +34,8 @@ DATA_DIR.mkdir(exist_ok=True)
 DATABASE_PATH = DATA_DIR / "avaitor.db"
 SEEN_VACANCIES_JSON = DATA_DIR / "seen_vacancies.json"
 
-# Scraper Endpoints
+# Target Endpoint - ONLY Corporate Ethiopian Airlines Careers Portal
 ET_CAREERS_URL = "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies"
-ET_UNIVERSITY_URL = "https://eau.edu.et"
-ET_ETHIOJOBS_URL = "https://www.ethiojobs.net/jobs-in-ethiopia/ethiopian-airlines-group/"
-
-# Scraper Enable Toggles (Default: Corporate Careers Only)
-ENABLE_CORPORATE_CAREERS = os.getenv("ENABLE_CORPORATE_CAREERS", "true").lower() == "true"
-ENABLE_UNIVERSITY = os.getenv("ENABLE_UNIVERSITY", "false").lower() == "true"
-ENABLE_ETHIOJOBS = os.getenv("ENABLE_ETHIOJOBS", "false").lower() == "true"
 
 # HTTP Headers to mimic regular browser navigation
 DEFAULT_HEADERS = {
@@ -56,45 +49,19 @@ DEFAULT_HEADERS = {
     "Pragma": "no-cache",
 }
 
-# Categorized Matching Keywords
-PILOT_KEYWORDS = [
-    "pilot trainee",
-    "trainee pilot",
-    "cadet pilot",
-    "student pilot",
-    "commercial pilot license",
-    "commercial pilot",
-    "ab-initio pilot",
-    "ab-initio",
-    "pilot training",
-    "first officer trainee",
-    "trainee first officer",
-    "cpl",
+# Strict Trainee Matching Categories (ALL vacancies must be Trainee positions)
+TRAINEE_INDICATORS = [
+    "trainee",
+    "cadet",
 ]
 
-CABIN_CREW_KEYWORDS = [
-    "cabin crew",
-    "flight attendant",
-    "air hostess",
-    "cabin crew trainee",
-    "trainee cabin crew",
-]
-
-MAINTENANCE_KEYWORDS = [
-    "aircraft technician",
-    "aircraft mechanic",
-    "aircraft maintenance",
-    "avionics",
-    "technician trainee",
-    "maintenance trainee",
-    "junior technician",
-    "powerplant",
-    "airframe",
-    "aviation maintenance",
-]
-
-# Irrelevant non-aviation roles to exclude
+# Explicit Exclusions (no self-sponsored CPL courses, no experienced crew)
 EXCLUDED_KEYWORDS = [
+    "cpl",
+    "commercial pilot license",
+    "experienced",
+    "senior",
+    "captain",
     "call center",
     "ticketing",
     "customer service agent",
@@ -106,5 +73,7 @@ EXCLUDED_KEYWORDS = [
     "security officer",
     "cook",
     "waiter",
-    "gardener",
+    "bartender",
+    "concierge",
+    "chef",
 ]

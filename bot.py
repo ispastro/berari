@@ -12,16 +12,11 @@ from config import (
     CHECK_INTERVAL_MINUTES,
     LOG_LEVEL,
     BOT_NAME,
-    ENABLE_CORPORATE_CAREERS,
-    ENABLE_UNIVERSITY,
-    ENABLE_ETHIOJOBS,
     SEEN_VACANCIES_JSON,
 )
 from database.db import Database
 from scrapers.base import VacancyItem
 from scrapers.ethiopian_careers import EthiopianCareersScraper
-from scrapers.eau_scraper import EAUScraper
-from scrapers.ethiojobs_scraper import EthiojobsScraper
 from tg_bot.notifier import TelegramNotifier
 from tg_bot.handlers import TelegramBotHandlers
 
@@ -37,13 +32,7 @@ class AvaitorApp:
     def __init__(self):
         self.db = Database(DATABASE_PATH)
         self.notifier = TelegramNotifier()
-        self.scrapers = []
-        if ENABLE_CORPORATE_CAREERS:
-            self.scrapers.append(EthiopianCareersScraper())
-        if ENABLE_UNIVERSITY:
-            self.scrapers.append(EAUScraper())
-        if ENABLE_ETHIOJOBS:
-            self.scrapers.append(EthiojobsScraper())
+        self.scrapers = [EthiopianCareersScraper()]
         # Auto-subscribe default chat id if configured in .env
         if TELEGRAM_CHAT_ID:
             self.db.add_subscriber(TELEGRAM_CHAT_ID, username="Admin", first_name="Admin", track="ALL")
@@ -52,11 +41,11 @@ class AvaitorApp:
 
     def run_check_cycle(self) -> List[Dict[str, Any]]:
         """
-        Execute a full scrape cycle across all portals,
+        Execute a check cycle on Ethiopian Airlines Corporate Careers portal,
         store new vacancies in database, and trigger targeted alerts.
         """
         logger.info("==================================================")
-        logger.info("Starting scan for Ethiopian Airlines career openings (Pilot / Cabin Crew / Maintenance)...")
+        logger.info("Scanning official Ethiopian Airlines Corporate Careers for Trainee openings...")
         new_vacancies_found: List[Dict[str, Any]] = []
 
         for scraper in self.scrapers:

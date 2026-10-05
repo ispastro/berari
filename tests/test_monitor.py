@@ -11,53 +11,62 @@ class TestPilotMatcher(unittest.TestCase):
     def setUp(self):
         self.filter = PilotFilter()
 
-    def test_positive_pilot_titles(self):
-        titles = [
+    def test_positive_trainee_pilot_titles(self):
+        trainee_titles = [
             "Trainee Pilot - Ethiopian Airlines",
             "Pilot Trainee (ET-Sponsored)",
             "Cadet Pilot Training Program 2026",
-            "Admission for Commercial Pilot License (CPL)",
-            "Ab-initio Pilot Course Announcement",
             "First Officer Trainee",
-            "Commercial Pilot",
+            "Trainee First Officer",
         ]
-        for t in titles:
+        for t in trainee_titles:
             cat, _ = self.filter.classify_vacancy(t)
-            self.assertEqual(cat, "PILOT", f"Failed to match pilot role: {t}")
+            self.assertEqual(cat, "PILOT", f"Failed to match pilot trainee: {t}")
 
-    def test_cabin_crew_titles(self):
-        titles = [
+    def test_positive_cabin_crew_trainee_titles(self):
+        trainee_titles = [
             "Trainee Cabin Crew - Ethiopian Airlines",
             "Cabin Crew Trainee Intake",
-            "Flight Attendant Announcement",
-            "Air Hostess / Cabin Crew",
+            "Flight Attendant Trainee Announcement",
+            "Trainee Air Hostess",
         ]
-        for t in titles:
+        for t in trainee_titles:
             cat, _ = self.filter.classify_vacancy(t)
-            self.assertEqual(cat, "CABIN_CREW", f"Failed to match cabin crew: {t}")
+            self.assertEqual(cat, "CABIN_CREW", f"Failed to match cabin crew trainee: {t}")
 
-    def test_maintenance_titles(self):
-        titles = [
-            "Aircraft Maintenance Technician (AMT)",
+    def test_positive_maintenance_trainee_titles(self):
+        trainee_titles = [
+            "Trainee Aircraft Maintenance Technician (AMT)",
             "Aircraft Mechanic Trainee",
-            "Avionics Technician",
             "Aviation Maintenance Engineering Trainee",
+            "Avionics Technician Trainee",
+            "Trainee Technician",
         ]
-        for t in titles:
+        for t in trainee_titles:
             cat, _ = self.filter.classify_vacancy(t)
-            self.assertEqual(cat, "MAINTENANCE", f"Failed to match maintenance: {t}")
+            self.assertEqual(cat, "MAINTENANCE", f"Failed to match maintenance trainee: {t}")
 
-    def test_excluded_titles(self):
-        titles = [
+    def test_excluded_non_trainee_and_cpl_titles(self):
+        non_trainee = [
+            "Commercial Pilot License (CPL)",
+            "Admission for Commercial Pilot License (CPL)",
+            "Commercial Pilot",
+            "Senior Captain B787",
+            "Experienced First Officer",
+            "Cabin Crew",
+            "Senior Flight Attendant",
+            "Aircraft Maintenance Technician",
+            "Avionics Engineer",
             "Junior Ticketing & Customer Service Agent",
             "Baggage Handler",
+            "Bartender",
+            "Meeting Concierge",
             "Finance & Accounting Officer",
             "Call Center Agent",
-            "Cleaner / Janitor",
         ]
-        for t in titles:
+        for t in non_trainee:
             cat, _ = self.filter.classify_vacancy(t)
-            self.assertIsNone(cat, f"Incorrectly matched non-aviation title: {t}")
+            self.assertIsNone(cat, f"Incorrectly matched non-trainee/CPL title: {t}")
 
     def test_metadata_extraction(self):
         sample_text = (
@@ -89,8 +98,8 @@ class TestDatabase(unittest.TestCase):
 
     def test_upsert_and_deduplication(self):
         res1 = self.db.upsert_vacancy(
-            title="Trainee Pilot",
-            source="Ethiopian Airlines",
+            title="Pilot Trainee",
+            source="Ethiopian Airlines Official Careers",
             category="PILOT",
             url="https://corporate.ethiopianairlines.com/job1",
             deadline="30 Oct 2026",
@@ -99,19 +108,16 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(res1["is_new"])
 
         res2 = self.db.upsert_vacancy(
-            title="Trainee Pilot",
-            source="Ethiopian Airlines",
+            title="Pilot Trainee",
+            source="Ethiopian Airlines Official Careers",
             category="PILOT",
             url="https://corporate.ethiopianairlines.com/job1",
         )
         self.assertFalse(res2["is_new"])
 
     def test_subscriber_track_filtering(self):
-        # User 1 wants PILOT only
         self.db.add_subscriber(chat_id="101", username="pilot_guy", first_name="Abebe", track="PILOT")
-        # User 2 wants CABIN_CREW only
         self.db.add_subscriber(chat_id="102", username="cabin_girl", first_name="Sara", track="CABIN_CREW")
-        # User 3 wants ALL
         self.db.add_subscriber(chat_id="103", username="all_jobs", first_name="Dawit", track="ALL")
 
         pilot_subs = self.db.get_subscribers_for_category("PILOT")
