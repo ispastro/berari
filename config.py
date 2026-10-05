@@ -16,6 +16,10 @@ except ImportError:
                     k, v = line.split("=", 1)
                     os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
+# Bot Name & Identity
+BOT_NAME = "Berari (በራሪ) - EtwingBot"
+BOT_USERNAME = "EtwingBot"
+
 # Telegram Settings
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
@@ -46,8 +50,8 @@ DEFAULT_HEADERS = {
     "Pragma": "no-cache",
 }
 
-# Matching Criteria
-POSITIVE_KEYWORDS = [
+# Categorized Matching Keywords
+PILOT_KEYWORDS = [
     "pilot trainee",
     "trainee pilot",
     "cadet pilot",
@@ -59,19 +63,42 @@ POSITIVE_KEYWORDS = [
     "pilot training",
     "first officer trainee",
     "trainee first officer",
+    "cpl",
 ]
 
-NEGATIVE_KEYWORDS = [
+CABIN_CREW_KEYWORDS = [
     "cabin crew",
     "flight attendant",
     "air hostess",
+    "cabin crew trainee",
+    "trainee cabin crew",
+]
+
+MAINTENANCE_KEYWORDS = [
     "aircraft technician",
     "aircraft mechanic",
+    "aircraft maintenance",
+    "avionics",
+    "technician trainee",
+    "maintenance trainee",
+    "junior technician",
+    "powerplant",
+    "airframe",
+    "aviation maintenance",
+]
+
+# Irrelevant non-aviation roles to exclude
+EXCLUDED_KEYWORDS = [
     "call center",
     "ticketing",
     "customer service agent",
     "catering",
     "cargo handler",
     "baggage handler",
+    "cleaner",
+    "driver",
     "security officer",
+    "cook",
+    "waiter",
+    "gardener",
 ]

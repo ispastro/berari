@@ -5,6 +5,12 @@ from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
 logger = logging.getLogger(__name__)
 
+CATEGORY_HEADERS = {
+    "PILOT": ("✈️", "PILOT & CADET VACANCY"),
+    "CABIN_CREW": ("🧑‍✈️", "CABIN CREW / FLIGHT ATTENDANT VACANCY"),
+    "MAINTENANCE": ("🔧", "AIRCRAFT MAINTENANCE & TECH VACANCY"),
+}
+
 class TelegramNotifier:
     def __init__(self, bot_token: Optional[str] = None):
         self.bot_token = bot_token or TELEGRAM_BOT_TOKEN
@@ -42,25 +48,28 @@ class TelegramNotifier:
             return False
 
     def format_vacancy_alert(self, vacancy: Dict[str, Any]) -> str:
-        """Format rich HTML card for pilot trainee alert."""
-        title = vacancy.get("title", "Pilot Trainee Position")
+        """Format rich HTML card for aviation vacancy alert."""
+        title = vacancy.get("title", "Aviation Position")
         source = vacancy.get("source", "Ethiopian Airlines")
+        category = vacancy.get("category", "PILOT").upper()
         url = vacancy.get("url", "")
-        deadline = vacancy.get("deadline") or "Not specified / Check official portal"
-        summary = vacancy.get("summary") or "New vacancy detected on the official Ethiopian Airlines recruitment channel."
+        deadline = vacancy.get("deadline") or "Not specified / Check portal immediately"
+        summary = vacancy.get("summary") or "New vacancy detected on the official Ethiopian Airlines recruitment portal."
 
-        # Truncate summary if too long for card display
+        emoji, cat_title = CATEGORY_HEADERS.get(category, ("✈️", "AVIATION VACANCY"))
+
         if len(summary) > 280:
             summary = summary[:277] + "..."
 
         text = (
-            "🚨 <b>ETHIOPIAN AIRLINES PILOT TRAINEE ALERT!</b> 🚨\n\n"
-            f"✈️ <b>Position:</b> <code>{title}</code>\n"
+            f"🚨 <b>ETHIOPIAN AIRLINES {cat_title}!</b> 🚨\n\n"
+            f"{emoji} <b>Position:</b> <code>{title}</code>\n"
+            f"🏷️ <b>Category:</b> {category.replace('_', ' ').title()}\n"
             f"🏛️ <b>Portal:</b> {source}\n"
             f"⏰ <b>Deadline:</b> {deadline}\n\n"
             f"📋 <b>Summary / Requirements:</b>\n"
             f"<i>{summary}</i>\n\n"
-            f"🔗 <a href=\"{url}\">Click here to view official posting and apply</a>"
+            f"🔗 <a href=\"{url}\">Tap below to view full requirements and apply</a>"
         )
         return text
 
@@ -75,7 +84,7 @@ class TelegramNotifier:
         }
 
     def broadcast_vacancy(self, vacancy: Dict[str, Any], chat_ids: List[str]) -> int:
-        """Send vacancy alert to all registered subscribers."""
+        """Send vacancy alert to target subscribers."""
         if not chat_ids and TELEGRAM_CHAT_ID:
             chat_ids = [TELEGRAM_CHAT_ID]
 
@@ -90,16 +99,35 @@ class TelegramNotifier:
 
         return sent_count
 
-    def send_test_alert(self, chat_id: str) -> bool:
-        """Send a test pilot vacancy alert to verify notifications."""
-        mock_vacancy = {
-            "title": "Trainee Pilot - Ethiopian Aviation University (TEST ALERT)",
-            "source": "Ethiopian Airlines Group / EAU",
-            "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",
-            "deadline": "31 October 2026",
-            "summary": "Educational requirement: BSc in Engineering or Natural Science with CGPA >= 2.75. Age: 18 - 25 years. Height: minimum 1.62m. English proficiency required.",
+    def send_test_alert(self, chat_id: str, category: str = "PILOT") -> bool:
+        """Send a test vacancy alert card to verify notifications."""
+        mock_vacancies = {
+            "PILOT": {
+                "title": "Trainee Pilot - Ethiopian Aviation University (TEST ALERT)",
+                "source": "Ethiopian Airlines Group / EAU",
+                "category": "PILOT",
+                "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",
+                "deadline": "31 October 2026",
+                "summary": "Educational requirement: BSc in Engineering or Science with CGPA >= 2.75. Age: 18 - 25 years. Height: minimum 1.62m. English proficiency required.",
+            },
+            "CABIN_CREW": {
+                "title": "Trainee Cabin Crew (TEST ALERT)",
+                "source": "Ethiopian Airlines Careers",
+                "category": "CABIN_CREW",
+                "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",
+                "deadline": "15 November 2026",
+                "summary": "Educational requirement: Minimum 10+2 / Grade 12 completion or Diploma. Age: 18 - 26 years. Height: minimum 1.59m. Good communication and interpersonal skills.",
+            },
+            "MAINTENANCE": {
+                "title": "Aircraft Maintenance Technician Trainee (TEST ALERT)",
+                "source": "Ethiopian Aviation University",
+                "category": "MAINTENANCE",
+                "url": "https://eau.edu.et/programs",
+                "deadline": "25 November 2026",
+                "summary": "Educational requirement: Diploma or BSc in Electrical, Mechanical, Aeronautical or Automotive Engineering. Age: up to 27 years.",
+            }
         }
-        text = self.format_vacancy_alert(mock_vacancy)
-        text = "🧪 <b>[TEST ALERT - SYSTEM CHECK]</b>\n" + text
-        markup = self.build_action_buttons(mock_vacancy["url"])
+        mock = mock_vacancies.get(category.upper(), mock_vacancies["PILOT"])
+        text = "🧪 <b>[TEST ALERT - BERARI SYSTEM CHECK]</b>\n\n" + self.format_vacancy_alert(mock)
+        markup = self.build_action_buttons(mock["url"])
         return self.send_message(chat_id, text, reply_markup=markup)

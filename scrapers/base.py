@@ -9,6 +9,7 @@ class VacancyItem:
     title: str
     source: str
     url: str
+    category: str = "PILOT"
     deadline: Optional[str] = None
     summary: Optional[str] = None
     is_pilot: bool = False

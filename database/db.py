@@ -15,7 +15,6 @@ class Database:
     def _get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, timeout=10.0)
         conn.row_factory = sqlite3.Row
-        # Enable WAL mode for high performance and concurrency
         conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA busy_timeout = 5000")
         return conn
@@ -30,6 +29,7 @@ class Database:
                     job_hash TEXT UNIQUE NOT NULL,
                     title TEXT NOT NULL,
                     source TEXT NOT NULL,
+                    category TEXT DEFAULT 'PILOT',
                     url TEXT NOT NULL,
                     deadline TEXT,
                     summary TEXT,
@@ -58,10 +58,23 @@ class Database:
                     chat_id TEXT PRIMARY KEY,
                     username TEXT,
                     first_name TEXT,
+                    track TEXT DEFAULT 'ALL',
                     subscribed_at TEXT NOT NULL,
                     is_active INTEGER DEFAULT 1
                 )
             """)
+
+            # Safe schema migrations for existing databases
+            cursor.execute("PRAGMA table_info(vacancies)")
+            v_cols = [row["name"] for row in cursor.fetchall()]
+            if "category" not in v_cols:
+                cursor.execute("ALTER TABLE vacancies ADD COLUMN category TEXT DEFAULT 'PILOT'")
+
+            cursor.execute("PRAGMA table_info(subscribers)")
+            s_cols = [row["name"] for row in cursor.fetchall()]
+            if "track" not in s_cols:
+                cursor.execute("ALTER TABLE subscribers ADD COLUMN track TEXT DEFAULT 'ALL'")
+
             conn.commit()
 
     @staticmethod
@@ -82,7 +95,15 @@ class Database:
             )
             conn.commit()
 
-    def upsert_vacancy(self, title: str, source: str, url: str, deadline: Optional[str] = None, summary: Optional[str] = None) -> Dict[str, Any]:
+    def upsert_vacancy(
+        self,
+        title: str,
+        source: str,
+        url: str,
+        category: str = "PILOT",
+        deadline: Optional[str] = None,
+        summary: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Insert or update a vacancy.
         Returns dict with:
@@ -102,10 +123,10 @@ class Database:
                 cursor.execute(
                     """
                     UPDATE vacancies 
-                    SET last_seen_at = ?, is_active = 1, deadline = COALESCE(?, deadline), summary = COALESCE(?, summary)
+                    SET last_seen_at = ?, is_active = 1, category = ?, deadline = COALESCE(?, deadline), summary = COALESCE(?, summary)
                     WHERE job_hash = ?
                     """,
-                    (now, deadline, summary, job_hash)
+                    (now, category, deadline, summary, job_hash)
                 )
                 conn.commit()
                 return {
@@ -117,10 +138,10 @@ class Database:
             else:
                 cursor.execute(
                     """
-                    INSERT INTO vacancies (job_hash, title, source, url, deadline, summary, first_seen_at, last_seen_at, is_active, notified)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+                    INSERT INTO vacancies (job_hash, title, source, category, url, deadline, summary, first_seen_at, last_seen_at, is_active, notified)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
                     """,
-                    (job_hash, title, source, url, deadline, summary, now, now)
+                    (job_hash, title, source, category, url, deadline, summary, now, now)
                 )
                 conn.commit()
                 new_id = cursor.lastrowid
@@ -137,18 +158,17 @@ class Database:
             conn.execute("UPDATE vacancies SET notified = 1 WHERE job_hash = ?", (job_hash,))
             conn.commit()
 
-    def get_unnotified_vacancies(self) -> List[Dict[str, Any]]:
-        """Fetch all newly discovered vacancies that haven't been alerted yet."""
+    def get_recent_vacancies(self, category: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """Fetch the most recent vacancies tracked, optionally filtered by category."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM vacancies WHERE notified = 0 AND is_active = 1 ORDER BY id ASC")
-            return [dict(row) for row in cursor.fetchall()]
-
-    def get_recent_vacancies(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Fetch the most recent vacancies tracked."""
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM vacancies ORDER BY first_seen_at DESC LIMIT ?", (limit,))
+            if category and category.upper() != "ALL":
+                cursor.execute(
+                    "SELECT * FROM vacancies WHERE category = ? ORDER BY first_seen_at DESC LIMIT ?",
+                    (category.upper(), limit)
+                )
+            else:
+                cursor.execute("SELECT * FROM vacancies ORDER BY first_seen_at DESC LIMIT ?", (limit,))
             return [dict(row) for row in cursor.fetchall()]
 
     def get_stats(self) -> Dict[str, Any]:
@@ -161,6 +181,15 @@ class Database:
             cursor.execute("SELECT COUNT(*) as active FROM vacancies WHERE is_active = 1")
             active = cursor.fetchone()["active"]
 
+            cursor.execute("SELECT COUNT(*) as pilot FROM vacancies WHERE is_active = 1 AND category = 'PILOT'")
+            pilot_count = cursor.fetchone()["pilot"]
+
+            cursor.execute("SELECT COUNT(*) as cabin FROM vacancies WHERE is_active = 1 AND category = 'CABIN_CREW'")
+            cabin_count = cursor.fetchone()["cabin"]
+
+            cursor.execute("SELECT COUNT(*) as tech FROM vacancies WHERE is_active = 1 AND category = 'MAINTENANCE'")
+            tech_count = cursor.fetchone()["tech"]
+
             cursor.execute("SELECT COUNT(*) as subs FROM subscribers WHERE is_active = 1")
             subscribers = cursor.fetchone()["subs"]
 
@@ -170,13 +199,16 @@ class Database:
             return {
                 "total_vacancies": total,
                 "active_vacancies": active,
+                "pilot_vacancies": pilot_count,
+                "cabin_vacancies": cabin_count,
+                "maintenance_vacancies": tech_count,
                 "subscribers_count": subscribers,
                 "last_scrape_time": last_scrape["timestamp"] if last_scrape else "Never",
                 "last_scrape_status": last_scrape["status"] if last_scrape else "N/A",
                 "last_scrape_source": last_scrape["source"] if last_scrape else "N/A",
             }
 
-    def add_subscriber(self, chat_id: str, username: Optional[str] = None, first_name: Optional[str] = None) -> bool:
+    def add_subscriber(self, chat_id: str, username: Optional[str] = None, first_name: Optional[str] = None, track: str = "ALL") -> bool:
         """Register or reactivate a subscriber chat ID."""
         now = datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
@@ -191,17 +223,41 @@ class Database:
                 return False
             else:
                 cursor.execute(
-                    "INSERT INTO subscribers (chat_id, username, first_name, subscribed_at, is_active) VALUES (?, ?, ?, ?, 1)",
-                    (chat_id, username, first_name, now)
+                    "INSERT INTO subscribers (chat_id, username, first_name, track, subscribed_at, is_active) VALUES (?, ?, ?, ?, ?, 1)",
+                    (chat_id, username, first_name, track, now)
                 )
                 conn.commit()
                 return True
+
+    def set_subscriber_track(self, chat_id: str, track: str):
+        """Update track preference for a subscriber (ALL, PILOT, CABIN_CREW, MAINTENANCE)."""
+        with self._get_connection() as conn:
+            conn.execute("UPDATE subscribers SET track = ? WHERE chat_id = ?", (track.upper(), chat_id))
+            conn.commit()
+
+    def get_subscriber_track(self, chat_id: str) -> str:
+        """Get the current track of a subscriber."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT track FROM subscribers WHERE chat_id = ?", (chat_id,))
+            row = cursor.fetchone()
+            return row["track"] if row and row["track"] else "ALL"
 
     def remove_subscriber(self, chat_id: str):
         """Unsubscribe a chat ID."""
         with self._get_connection() as conn:
             conn.execute("UPDATE subscribers SET is_active = 0 WHERE chat_id = ?", (chat_id,))
             conn.commit()
+
+    def get_subscribers_for_category(self, category: str) -> List[str]:
+        """Get active subscriber chat IDs interested in this category (or ALL)."""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT chat_id FROM subscribers WHERE is_active = 1 AND (track = 'ALL' OR track = ?)",
+                (category.upper(),)
+            )
+            return [row["chat_id"] for row in cursor.fetchall()]
 
     def get_active_subscribers(self) -> List[str]:
         """Get all active subscriber chat IDs."""

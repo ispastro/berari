@@ -29,7 +29,6 @@ class EAUScraper(BaseScraper):
                 resp = self.fetch(url)
                 soup = BeautifulSoup(resp.text, "html.parser")
 
-                # Scan cards, list items, headings and links
                 elements = soup.select(".card, .program-item, .post, .news-item, li, article, .item, tr")
                 for elem in elements:
                     elem_text = elem.get_text(" ", strip=True)
@@ -39,10 +38,10 @@ class EAUScraper(BaseScraper):
                     title_tag = elem.find(["h1", "h2", "h3", "h4", "h5", "a", "strong"])
                     title = title_tag.get_text(strip=True) if title_tag else elem_text[:80]
 
-                    if self.filter.is_pilot_trainee_vacancy(title, elem_text):
+                    category, meta = self.filter.classify_vacancy(title, elem_text)
+                    if category:
                         link_tag = elem.find("a", href=True)
                         link = urljoin(url, link_tag["href"]) if link_tag else url
-                        meta = self.filter.extract_metadata(elem_text)
 
                         if not any(r.title.lower() == title.lower() and r.url == link for r in results):
                             results.append(
@@ -50,32 +49,36 @@ class EAUScraper(BaseScraper):
                                     title=title,
                                     source=self.name,
                                     url=link,
+                                    category=category,
                                     deadline=meta.get("deadline"),
                                     summary=elem_text[:400],
-                                    is_pilot=True
+                                    is_pilot=(category == "PILOT")
                                 )
                             )
 
                 # Direct anchor scan
                 for a in soup.find_all("a", href=True):
                     a_text = a.get_text(strip=True)
-                    if a_text and self.filter.is_pilot_trainee_vacancy(a_text):
-                        link = urljoin(url, a["href"])
-                        if not any(r.url == link for r in results):
-                            results.append(
-                                VacancyItem(
-                                    title=a_text,
-                                    source=self.name,
-                                    url=link,
-                                    deadline=None,
-                                    summary=f"Found on Ethiopian Aviation University portal ({url})",
-                                    is_pilot=True
+                    if a_text:
+                        category, _ = self.filter.classify_vacancy(a_text)
+                        if category:
+                            link = urljoin(url, a["href"])
+                            if not any(r.url == link for r in results):
+                                results.append(
+                                    VacancyItem(
+                                        title=a_text,
+                                        source=self.name,
+                                        url=link,
+                                        category=category,
+                                        deadline=None,
+                                        summary=f"Found on Ethiopian Aviation University portal ({url})",
+                                        is_pilot=(category == "PILOT")
+                                    )
                                 )
-                            )
 
             except Exception as e:
                 logger.warning(f"[{self.name}] Could not scrape endpoint {url}: {e}")
                 continue
 
-        logger.info(f"[{self.name}] Finished scan. Found {len(results)} pilot trainee items.")
+        logger.info(f"[{self.name}] Finished scan. Found {len(results)} items.")
         return results

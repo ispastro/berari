@@ -23,8 +23,7 @@ class EthiopianCareersScraper(BaseScraper):
             resp = self.fetch(self.url)
             soup = BeautifulSoup(resp.text, "html.parser")
 
-            # Ethiopian Airlines often formats vacancies in tables or accordion/card sections
-            # 1. Check table rows first
+            # 1. Check table rows
             rows = soup.find_all("tr")
             for row in rows:
                 cols = row.find_all(["td", "th"])
@@ -32,23 +31,22 @@ class EthiopianCareersScraper(BaseScraper):
                     text_parts = [c.get_text(" ", strip=True) for c in cols]
                     row_text = " | ".join(text_parts)
                     
-                    # Find any link in row
                     link_tag = row.find("a", href=True)
                     link = urljoin(self.url, link_tag["href"]) if link_tag else self.url
                     
-                    # The first or second column is typically the title
                     title = text_parts[0] if len(text_parts[0]) > 3 else (text_parts[1] if len(text_parts) > 1 else "")
                     
-                    if title and self.filter.is_pilot_trainee_vacancy(title, row_text):
-                        meta = self.filter.extract_metadata(row_text)
+                    category, meta = self.filter.classify_vacancy(title, row_text)
+                    if category:
                         results.append(
                             VacancyItem(
                                 title=title,
                                 source=self.name,
                                 url=link,
+                                category=category,
                                 deadline=meta.get("deadline"),
                                 summary=row_text[:400],
-                                is_pilot=True
+                                is_pilot=(category == "PILOT")
                             )
                         )
 
@@ -64,42 +62,45 @@ class EthiopianCareersScraper(BaseScraper):
                 if not title or len(title) < 4:
                     continue
 
-                if self.filter.is_pilot_trainee_vacancy(title, card_text):
+                category, meta = self.filter.classify_vacancy(title, card_text)
+                if category:
                     link_tag = card.find("a", href=True)
                     link = urljoin(self.url, link_tag["href"]) if link_tag else self.url
-                    meta = self.filter.extract_metadata(card_text)
 
-                    # Deduplicate in current batch
                     if not any(r.title.lower() == title.lower() and r.url == link for r in results):
                         results.append(
                             VacancyItem(
                                 title=title,
                                 source=self.name,
                                 url=link,
+                                category=category,
                                 deadline=meta.get("deadline"),
                                 summary=card_text[:400],
-                                is_pilot=True
+                                is_pilot=(category == "PILOT")
                             )
                         )
 
-            # 3. Direct anchor scan across entire page for any pilot-related links
+            # 3. Direct anchor scan
             for a in soup.find_all("a", href=True):
                 anchor_text = a.get_text(strip=True)
-                if anchor_text and self.filter.is_pilot_trainee_vacancy(anchor_text):
-                    link = urljoin(self.url, a["href"])
-                    if not any(r.url == link for r in results):
-                        results.append(
-                            VacancyItem(
-                                title=anchor_text,
-                                source=self.name,
-                                url=link,
-                                deadline=None,
-                                summary=f"Direct link found on {self.url}",
-                                is_pilot=True
+                if anchor_text:
+                    category, _ = self.filter.classify_vacancy(anchor_text)
+                    if category:
+                        link = urljoin(self.url, a["href"])
+                        if not any(r.url == link for r in results):
+                            results.append(
+                                VacancyItem(
+                                    title=anchor_text,
+                                    source=self.name,
+                                    url=link,
+                                    category=category,
+                                    deadline=None,
+                                    summary=f"Direct link found on {self.url}",
+                                    is_pilot=(category == "PILOT")
+                                )
                             )
-                        )
 
-            logger.info(f"[{self.name}] Finished scan. Found {len(results)} pilot trainee vacancies.")
+            logger.info(f"[{self.name}] Finished scan. Found {len(results)} aviation vacancies.")
         except Exception as e:
             logger.error(f"[{self.name}] Error scraping vacancies: {e}", exc_info=True)
             raise

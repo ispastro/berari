@@ -22,21 +22,42 @@ class TestPilotMatcher(unittest.TestCase):
             "Commercial Pilot",
         ]
         for t in titles:
-            self.assertTrue(self.filter.is_pilot_trainee_vacancy(t), f"Failed to match: {t}")
+            cat, _ = self.filter.classify_vacancy(t)
+            self.assertEqual(cat, "PILOT", f"Failed to match pilot role: {t}")
 
-    def test_negative_non_pilot_titles(self):
+    def test_cabin_crew_titles(self):
         titles = [
-            "Cabin Crew - Ethiopian Airlines",
-            "Flight Attendant Trainee",
-            "Aircraft Maintenance Technician",
-            "Aircraft Mechanic II",
+            "Trainee Cabin Crew - Ethiopian Airlines",
+            "Cabin Crew Trainee Intake",
+            "Flight Attendant Announcement",
+            "Air Hostess / Cabin Crew",
+        ]
+        for t in titles:
+            cat, _ = self.filter.classify_vacancy(t)
+            self.assertEqual(cat, "CABIN_CREW", f"Failed to match cabin crew: {t}")
+
+    def test_maintenance_titles(self):
+        titles = [
+            "Aircraft Maintenance Technician (AMT)",
+            "Aircraft Mechanic Trainee",
+            "Avionics Technician",
+            "Aviation Maintenance Engineering Trainee",
+        ]
+        for t in titles:
+            cat, _ = self.filter.classify_vacancy(t)
+            self.assertEqual(cat, "MAINTENANCE", f"Failed to match maintenance: {t}")
+
+    def test_excluded_titles(self):
+        titles = [
             "Junior Ticketing & Customer Service Agent",
             "Baggage Handler",
             "Finance & Accounting Officer",
-            "IT Systems Administrator",
+            "Call Center Agent",
+            "Cleaner / Janitor",
         ]
         for t in titles:
-            self.assertFalse(self.filter.is_pilot_trainee_vacancy(t), f"Incorrectly matched: {t}")
+            cat, _ = self.filter.classify_vacancy(t)
+            self.assertIsNone(cat, f"Incorrectly matched non-aviation title: {t}")
 
     def test_metadata_extraction(self):
         sample_text = (
@@ -70,28 +91,43 @@ class TestDatabase(unittest.TestCase):
         res1 = self.db.upsert_vacancy(
             title="Trainee Pilot",
             source="Ethiopian Airlines",
+            category="PILOT",
             url="https://corporate.ethiopianairlines.com/job1",
             deadline="30 Oct 2026",
             summary="Requirements here"
         )
         self.assertTrue(res1["is_new"])
 
-        # Second insert with same title and url should recognize it as existing
         res2 = self.db.upsert_vacancy(
             title="Trainee Pilot",
             source="Ethiopian Airlines",
+            category="PILOT",
             url="https://corporate.ethiopianairlines.com/job1",
         )
         self.assertFalse(res2["is_new"])
 
-    def test_subscribers(self):
-        self.db.add_subscriber(chat_id="12345678", username="pilot_john", first_name="John")
-        subs = self.db.get_active_subscribers()
-        self.assertIn("12345678", subs)
+    def test_subscriber_track_filtering(self):
+        # User 1 wants PILOT only
+        self.db.add_subscriber(chat_id="101", username="pilot_guy", first_name="Abebe", track="PILOT")
+        # User 2 wants CABIN_CREW only
+        self.db.add_subscriber(chat_id="102", username="cabin_girl", first_name="Sara", track="CABIN_CREW")
+        # User 3 wants ALL
+        self.db.add_subscriber(chat_id="103", username="all_jobs", first_name="Dawit", track="ALL")
 
-        self.db.remove_subscriber("12345678")
-        subs_after = self.db.get_active_subscribers()
-        self.assertNotIn("12345678", subs_after)
+        pilot_subs = self.db.get_subscribers_for_category("PILOT")
+        self.assertIn("101", pilot_subs)
+        self.assertNotIn("102", pilot_subs)
+        self.assertIn("103", pilot_subs)
+
+        cabin_subs = self.db.get_subscribers_for_category("CABIN_CREW")
+        self.assertNotIn("101", cabin_subs)
+        self.assertIn("102", cabin_subs)
+        self.assertIn("103", cabin_subs)
+
+        tech_subs = self.db.get_subscribers_for_category("MAINTENANCE")
+        self.assertNotIn("101", tech_subs)
+        self.assertNotIn("102", tech_subs)
+        self.assertIn("103", tech_subs)
 
 
 if __name__ == "__main__":

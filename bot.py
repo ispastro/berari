@@ -11,6 +11,7 @@ from config import (
     TELEGRAM_CHAT_ID,
     CHECK_INTERVAL_MINUTES,
     LOG_LEVEL,
+    BOT_NAME,
 )
 from database.db import Database
 from scrapers.base import VacancyItem
@@ -26,7 +27,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("Avaitor")
+logger = logging.getLogger("Berari")
 
 class AvaitorApp:
     def __init__(self):
@@ -39,15 +40,15 @@ class AvaitorApp:
         ]
         # Auto-subscribe default chat id if configured in .env
         if TELEGRAM_CHAT_ID:
-            self.db.add_subscriber(TELEGRAM_CHAT_ID, username="Admin", first_name="Admin")
+            self.db.add_subscriber(TELEGRAM_CHAT_ID, username="Admin", first_name="Admin", track="ALL")
 
     def run_check_cycle(self) -> List[Dict[str, Any]]:
         """
         Execute a full scrape cycle across all portals,
-        store new vacancies in database, and trigger alerts.
+        store new vacancies in database, and trigger targeted alerts.
         """
         logger.info("==================================================")
-        logger.info("Starting scan for Ethiopian Airlines Pilot Trainee openings...")
+        logger.info("Starting scan for Ethiopian Airlines career openings (Pilot / Cabin Crew / Maintenance)...")
         new_vacancies_found: List[Dict[str, Any]] = []
 
         for scraper in self.scrapers:
@@ -60,16 +61,18 @@ class AvaitorApp:
                         title=item.title,
                         source=item.source,
                         url=item.url,
+                        category=item.category,
                         deadline=item.deadline,
                         summary=item.summary,
                     )
                     
                     if result["is_new"] or not result["already_notified"]:
-                        logger.info(f"✨ NEW PILOT VACANCY DISCOVERED: {item.title} ({item.source})")
+                        logger.info(f"✨ NEW VACANCY DISCOVERED: [{item.category}] {item.title} ({item.source})")
                         vacancy_data = {
                             "title": item.title,
                             "source": item.source,
                             "url": item.url,
+                            "category": item.category,
                             "deadline": item.deadline,
                             "summary": item.summary,
                             "job_hash": result["job_hash"],
@@ -80,17 +83,20 @@ class AvaitorApp:
                 logger.error(f"Error while running {scraper.name}: {e}")
                 self.db.record_scrape(source=scraper.name, status="ERROR", items_found=0, error=str(e))
 
-        # Broadcast alerts for any new vacancies
+        # Broadcast alerts for any new vacancies to matching track subscribers
         if new_vacancies_found:
-            subscribers = self.db.get_active_subscribers()
-            logger.info(f"Broadcasting {len(new_vacancies_found)} new vacancy alert(s) to {len(subscribers)} subscriber(s)...")
-
             for vac in new_vacancies_found:
-                sent = self.notifier.broadcast_vacancy(vac, subscribers)
+                category = vac.get("category", "PILOT")
+                target_subscribers = self.db.get_subscribers_for_category(category)
+
+                logger.info(
+                    f"Broadcasting [{category}] '{vac['title']}' to {len(target_subscribers)} subscriber(s)..."
+                )
+                sent = self.notifier.broadcast_vacancy(vac, target_subscribers)
                 if sent > 0 or not self.notifier.is_configured:
                     self.db.mark_notified(vac["job_hash"])
         else:
-            logger.info("Scan finished: No new pilot trainee vacancies detected.")
+            logger.info("Scan finished: No new aviation vacancies detected.")
 
         logger.info("==================================================")
         return new_vacancies_found
@@ -115,7 +121,7 @@ class AvaitorApp:
             logger.info("To enable Telegram, edit .env and set TELEGRAM_BOT_TOKEN.")
             return
 
-        from telegram.ext import ApplicationBuilder, CommandHandler
+        from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 
         handlers = TelegramBotHandlers(
             db=self.db,
@@ -125,14 +131,17 @@ class AvaitorApp:
 
         app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
         app.add_handler(CommandHandler("start", handlers.start))
+        app.add_handler(CommandHandler("track", handlers.track_command))
+        app.add_handler(CommandHandler("settings", handlers.track_command))
         app.add_handler(CommandHandler("help", handlers.help_command))
         app.add_handler(CommandHandler("status", handlers.status))
         app.add_handler(CommandHandler("check", handlers.check))
         app.add_handler(CommandHandler("latest", handlers.latest))
         app.add_handler(CommandHandler("test", handlers.test))
         app.add_handler(CommandHandler("stop", handlers.stop))
+        app.add_handler(CallbackQueryHandler(handlers.handle_callback_query))
 
-        logger.info("Telegram interactive bot polling started. You can now chat with your bot!")
+        logger.info(f"Telegram bot ({BOT_NAME}) is online and polling! Search @EtwingBot on Telegram.")
         app.run_polling()
 
     def start(self):
@@ -154,11 +163,11 @@ class AvaitorApp:
                 while True:
                     time.sleep(1)
             except KeyboardInterrupt:
-                logger.info("Avaitor monitor stopped by user.")
+                logger.info("Monitor stopped by user.")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Avaitor - Ethiopian Airlines Pilot Trainee Vacancy Monitor")
+    parser = argparse.ArgumentParser(description=f"{BOT_NAME} - Ethiopian Airlines Career Monitor")
     parser.add_argument("--check-once", action="store_true", help="Run a single scan right now and exit")
     parser.add_argument("--test-alert", action="store_true", help="Send a test notification card to your Telegram")
     parser.add_argument("--status", action="store_true", help="Display database and monitoring statistics")
@@ -168,7 +177,7 @@ def main():
 
     if args.status:
         stats = app.db.get_stats()
-        print("\n--- AVAITOR MONITOR STATUS ---")
+        print(f"\n--- {BOT_NAME.upper()} STATUS ---")
         for k, v in stats.items():
             print(f"{k}: {v}")
         print("------------------------------\n")
@@ -180,7 +189,7 @@ def main():
             sys.exit(1)
         target = TELEGRAM_CHAT_ID or (app.db.get_active_subscribers() and app.db.get_active_subscribers()[0])
         if not target:
-            print("ERROR: No TELEGRAM_CHAT_ID found in .env and no subscribers registered in database.")
+            print("ERROR: No chat ID found. Start the bot on Telegram (@EtwingBot) first with /start.")
             sys.exit(1)
         print(f"Sending test alert to {target}...")
         ok = app.notifier.send_test_alert(target)
@@ -190,7 +199,7 @@ def main():
     if args.check_once:
         print("Running one-time check across all Ethiopian Airlines portals...")
         results = app.run_check_cycle()
-        print(f"\nDone! Found {len(results)} new pilot trainee opening(s).")
+        print(f"\nDone! Found {len(results)} new opening(s).")
         sys.exit(0)
 
     # Default: Run full 24/7 daemon
