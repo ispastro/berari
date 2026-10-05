@@ -146,16 +146,17 @@ class TelegramBotHandlers:
             await update.message.reply_text("ℹ️ No vacancies currently logged for your track in the database. Run /check to scan.")
             return
 
-        text = f"📜 <b>Recent Ethiopian Airlines Vacancies ({TRACK_NAMES.get(user_track, user_track)}):</b>\n\n"
+        text = f"📜 <b>Recent Ethiopian Airlines Trainee Vacancies ({TRACK_NAMES.get(user_track, user_track)}):</b>\n\n"
         for idx, vac in enumerate(recent, 1):
-            cat = vac.get("category", "PILOT")
-            icon = "✈️" if cat == "PILOT" else ("🧑‍✈️" if cat == "CABIN_CREW" else "🔧")
+            title = vac.get("title", "TRAINEE")
+            location = vac.get("location") or "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)"
+            reg_date = vac.get("deadline") or "Check portal"
+            url = vac.get("url", "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies")
             text += (
-                f"<b>{idx}. {icon} {vac['title']}</b>\n"
-                f"🏷️ Track: {cat.replace('_', ' ').title()}\n"
-                f"🏛️ Portal: {vac['source']}\n"
-                f"⏰ Deadline: {vac.get('deadline') or 'Check portal'}\n"
-                f"🔗 <a href=\"{vac['url']}\">View Details & Apply</a>\n\n"
+                f"<b>Position :</b>  <code>{title}</code>\n"
+                f"<b>Location :</b>  {location}\n"
+                f"<b>Registration Date :</b>  {reg_date}\n"
+                f"🔗 <a href=\"{url}\">View Details & Apply</a>\n\n"
             )
         await update.message.reply_text(text, parse_mode="HTML", disable_web_page_preview=True)
 

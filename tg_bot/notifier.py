@@ -48,28 +48,18 @@ class TelegramNotifier:
             return False
 
     def format_vacancy_alert(self, vacancy: Dict[str, Any]) -> str:
-        """Format rich HTML card for aviation vacancy alert."""
-        title = vacancy.get("title", "Aviation Position")
-        source = vacancy.get("source", "Ethiopian Airlines")
-        category = vacancy.get("category", "PILOT").upper()
-        url = vacancy.get("url", "")
-        deadline = vacancy.get("deadline") or "Not specified / Check portal immediately"
-        summary = vacancy.get("summary") or "New vacancy detected on the official Ethiopian Airlines recruitment portal."
-
-        emoji, cat_title = CATEGORY_HEADERS.get(category, ("✈️", "AVIATION VACANCY"))
-
-        if len(summary) > 280:
-            summary = summary[:277] + "..."
+        """Format vacancy alert using the exact official Ethiopian Airlines format."""
+        title = vacancy.get("title", "TRAINEE")
+        location = vacancy.get("location") or "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)"
+        registration_date = vacancy.get("deadline") or "Check portal immediately"
+        url = vacancy.get("url", "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies")
 
         text = (
-            f"🚨 <b>ETHIOPIAN AIRLINES {cat_title}!</b> 🚨\n\n"
-            f"{emoji} <b>Position:</b> <code>{title}</code>\n"
-            f"🏷️ <b>Category:</b> {category.replace('_', ' ').title()}\n"
-            f"🏛️ <b>Portal:</b> {source}\n"
-            f"⏰ <b>Deadline:</b> {deadline}\n\n"
-            f"📋 <b>Summary / Requirements:</b>\n"
-            f"<i>{summary}</i>\n\n"
-            f"🔗 <a href=\"{url}\">Tap below to view full requirements and apply</a>"
+            f"🚨 <b>ETHIOPIAN AIRLINES TRAINEE ALERT!</b> 🚨\n\n"
+            f"<b>Position :</b>  <code>{title}</code>\n"
+            f"<b>Location :</b>  {location}\n"
+            f"<b>Registration Date :</b>  {registration_date}\n\n"
+            f"🔗 <a href=\"{url}\">Tap here to view official posting and apply</a>"
         )
         return text
 
@@ -89,7 +79,7 @@ class TelegramNotifier:
             chat_ids = [TELEGRAM_CHAT_ID]
 
         message = self.format_vacancy_alert(vacancy)
-        markup = self.build_action_buttons(vacancy.get("url", "https://corporate.ethiopianairlines.com"))
+        markup = self.build_action_buttons(vacancy.get("url", "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies"))
 
         sent_count = 0
         for cid in set(chat_ids):
@@ -103,28 +93,25 @@ class TelegramNotifier:
         """Send a test vacancy alert card to verify notifications."""
         mock_vacancies = {
             "PILOT": {
-                "title": "Trainee Pilot - Ethiopian Aviation University (TEST ALERT)",
-                "source": "Ethiopian Airlines Group / EAU",
+                "title": "TRAINEE - PILOT",
+                "location": "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)",
                 "category": "PILOT",
                 "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",
-                "deadline": "31 October 2026",
-                "summary": "Educational requirement: BSc in Engineering or Science with CGPA >= 2.75. Age: 18 - 25 years. Height: minimum 1.62m. English proficiency required.",
+                "deadline": "From October 10, 2026, to October 25, 2026",
             },
             "CABIN_CREW": {
-                "title": "Trainee Cabin Crew (TEST ALERT)",
-                "source": "Ethiopian Airlines Careers",
+                "title": "TRAINEE - CABIN CREW",
+                "location": "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)",
                 "category": "CABIN_CREW",
                 "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",
-                "deadline": "15 November 2026",
-                "summary": "Educational requirement: Minimum 10+2 / Grade 12 completion or Diploma. Age: 18 - 26 years. Height: minimum 1.59m. Good communication and interpersonal skills.",
+                "deadline": "From October 10, 2026, to October 20, 2026",
             },
             "MAINTENANCE": {
-                "title": "Aircraft Maintenance Technician Trainee (TEST ALERT)",
-                "source": "Ethiopian Aviation University",
+                "title": "TRAINEE - INDUSTRIAL MECHANIC",
+                "location": "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)",
                 "category": "MAINTENANCE",
-                "url": "https://eau.edu.et/programs",
-                "deadline": "25 November 2026",
-                "summary": "Educational requirement: Diploma or BSc in Electrical, Mechanical, Aeronautical or Automotive Engineering. Age: up to 27 years.",
+                "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",
+                "deadline": "From September 21, 2026, to September 25, 2026",
             }
         }
         mock = mock_vacancies.get(category.upper(), mock_vacancies["PILOT"])

@@ -36,6 +36,8 @@ class TestPilotMatcher(unittest.TestCase):
 
     def test_positive_maintenance_trainee_titles(self):
         trainee_titles = [
+            "TRAINEE - INDUSTRIAL ELECTRICIAN",
+            "TRAINEE - INDUSTRIAL MECHANIC",
             "Trainee Aircraft Maintenance Technician (AMT)",
             "Aircraft Mechanic Trainee",
             "Aviation Maintenance Engineering Trainee",
@@ -85,6 +87,23 @@ class TestPilotMatcher(unittest.TestCase):
         self.assertIn("1.62", meta["height"])
         self.assertIsNotNone(meta["deadline"])
         self.assertIn("20 November", meta["deadline"])
+
+
+class TestAlertFormat(unittest.TestCase):
+    def test_official_card_format(self):
+        from tg_bot.notifier import TelegramNotifier
+        notifier = TelegramNotifier(bot_token="mock_token")
+        vac = {
+            "title": "TRAINEE - INDUSTRIAL ELECTRICIAN",
+            "location": "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)",
+            "deadline": "From September 21, 2026, to September 25, 2026.",
+            "url": "https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies",
+        }
+        text = notifier.format_vacancy_alert(vac)
+        self.assertIn("<b>Position :</b>  <code>TRAINEE - INDUSTRIAL ELECTRICIAN</code>", text)
+        self.assertIn("<b>Location :</b>  Ethiopian Airlines Head Quarter", text)
+        self.assertIn("<b>Registration Date :</b>  From September 21, 2026, to September 25, 2026.", text)
+        self.assertIn("href=\"https://corporate.ethiopianairlines.com/AboutEthiopian/careers/vacancies\"", text)
 
 
 class TestDatabase(unittest.TestCase):

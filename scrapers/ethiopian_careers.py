@@ -31,21 +31,42 @@ class EthiopianCareersScraper(BaseScraper):
                 if not table_text or len(table_text) < 15:
                     continue
 
-                # Look for explicit "Position Title : <job title>" pattern
-                pos_match = re.search(r'Position(?:\s*Title)?\s*:\s*([^.\n|]{3,80})', table_text, re.I)
+                # 1. Position Title (e.g. 'TRAINEE - INDUSTRIAL ELECTRICIAN', 'TRAINEE - PILOT')
+                pos_match = re.search(
+                    r'Position(?:\s*Title)?\s*:\s*(.+?)(?=\s*(?:Location|Registration\s*Date|Closing\s*Date|Deadline|Qualification|$))',
+                    table_text,
+                    re.I | re.DOTALL
+                )
                 if not pos_match:
                     continue
 
                 raw_title = pos_match.group(1).strip()
-                # Clean up any trailing labels like 'Qualification Requirement' or 'Closing Date'
-                clean_title = re.split(r'qualification|registration|closing|deadline', raw_title, flags=re.I)[0].strip()
+                clean_title = re.sub(r'[\r\n\t]+', ' ', raw_title).strip()
+                # Clean up any trailing labels like 'Qualification Requirement'
+                clean_title = re.split(r'qualification|registration|closing|deadline', clean_title, flags=re.I)[0].strip()
 
                 if not clean_title or len(clean_title) < 3:
                     continue
 
-                # Check if this vacancy matches Pilot, Cabin Crew, or Maintenance
+                # 2. Location (e.g. 'Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)')
+                loc_match = re.search(
+                    r'Location\s*:\s*(.+?)(?=\s*(?:Registration\s*Date|Closing\s*Date|Deadline|Qualification|Position|$))',
+                    table_text,
+                    re.I | re.DOTALL
+                )
+                clean_location = re.sub(r'[\r\n\t]+', ' ', loc_match.group(1)).strip() if loc_match else "Ethiopian Airlines Head Quarter, Ethiopian Airport Building (Recruitment & Placement Office)"
+
+                # 3. Registration Date (e.g. 'From September 21, 2026, to September 25, 2026.')
+                reg_match = re.search(
+                    r'(?:Registration\s*Date|Closing\s*Date|Deadline)\s*:\s*(.+?)(?=\s*(?:Qualification|Position|Location|Experience|Language|$))',
+                    table_text,
+                    re.I | re.DOTALL
+                )
+
+                # Check if this vacancy matches Pilot, Cabin Crew, or Maintenance Trainee
                 category, meta = self.filter.classify_vacancy(clean_title, table_text)
                 if category:
+                    clean_deadline = re.sub(r'[\r\n\t]+', ' ', reg_match.group(1)).strip() if reg_match else meta.get("deadline")
                     link_tag = table.find("a", href=True)
                     link = urljoin(self.url, link_tag["href"]) if link_tag else self.url
 
@@ -56,7 +77,8 @@ class EthiopianCareersScraper(BaseScraper):
                                 source=self.name,
                                 url=link,
                                 category=category,
-                                deadline=meta.get("deadline"),
+                                location=clean_location,
+                                deadline=clean_deadline,
                                 summary=table_text[:400],
                                 is_pilot=(category == "PILOT")
                             )

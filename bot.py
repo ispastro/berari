@@ -59,6 +59,7 @@ class AvaitorApp:
                         source=item.source,
                         url=item.url,
                         category=item.category,
+                        location=item.location,
                         deadline=item.deadline,
                         summary=item.summary,
                     )
@@ -70,6 +71,7 @@ class AvaitorApp:
                             "source": item.source,
                             "url": item.url,
                             "category": item.category,
+                            "location": item.location,
                             "deadline": item.deadline,
                             "summary": item.summary,
                             "job_hash": result["job_hash"],

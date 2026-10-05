@@ -31,6 +31,7 @@ class Database:
                     title TEXT NOT NULL,
                     source TEXT NOT NULL,
                     category TEXT DEFAULT 'PILOT',
+                    location TEXT,
                     url TEXT NOT NULL,
                     deadline TEXT,
                     summary TEXT,
@@ -70,6 +71,8 @@ class Database:
             v_cols = [row["name"] for row in cursor.fetchall()]
             if "category" not in v_cols:
                 cursor.execute("ALTER TABLE vacancies ADD COLUMN category TEXT DEFAULT 'PILOT'")
+            if "location" not in v_cols:
+                cursor.execute("ALTER TABLE vacancies ADD COLUMN location TEXT")
 
             cursor.execute("PRAGMA table_info(subscribers)")
             s_cols = [row["name"] for row in cursor.fetchall()]
@@ -102,6 +105,7 @@ class Database:
         source: str,
         url: str,
         category: str = "PILOT",
+        location: Optional[str] = None,
         deadline: Optional[str] = None,
         summary: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -124,10 +128,10 @@ class Database:
                 cursor.execute(
                     """
                     UPDATE vacancies 
-                    SET last_seen_at = ?, is_active = 1, category = ?, deadline = COALESCE(?, deadline), summary = COALESCE(?, summary)
+                    SET last_seen_at = ?, is_active = 1, category = ?, location = COALESCE(?, location), deadline = COALESCE(?, deadline), summary = COALESCE(?, summary)
                     WHERE job_hash = ?
                     """,
-                    (now, category, deadline, summary, job_hash)
+                    (now, category, location, deadline, summary, job_hash)
                 )
                 conn.commit()
                 return {
@@ -139,10 +143,10 @@ class Database:
             else:
                 cursor.execute(
                     """
-                    INSERT INTO vacancies (job_hash, title, source, category, url, deadline, summary, first_seen_at, last_seen_at, is_active, notified)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
+                    INSERT INTO vacancies (job_hash, title, source, category, location, url, deadline, summary, first_seen_at, last_seen_at, is_active, notified)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0)
                     """,
-                    (job_hash, title, source, category, url, deadline, summary, now, now)
+                    (job_hash, title, source, category, location, url, deadline, summary, now, now)
                 )
                 conn.commit()
                 new_id = cursor.lastrowid
@@ -271,7 +275,7 @@ class Database:
         """Export all recorded vacancies to a portable JSON file for GitHub Actions sync."""
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT job_hash, title, source, category, url, deadline, summary, first_seen_at FROM vacancies ORDER BY first_seen_at ASC")
+            cursor.execute("SELECT job_hash, title, source, category, location, url, deadline, summary, first_seen_at FROM vacancies ORDER BY first_seen_at ASC")
             items = [dict(row) for row in cursor.fetchall()]
         
         with open(json_path, "w", encoding="utf-8") as f:
@@ -290,14 +294,15 @@ class Database:
                 for item in items:
                     conn.execute(
                         """
-                        INSERT OR IGNORE INTO vacancies (job_hash, title, source, category, url, deadline, summary, first_seen_at, last_seen_at, is_active, notified)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+                        INSERT OR IGNORE INTO vacancies (job_hash, title, source, category, location, url, deadline, summary, first_seen_at, last_seen_at, is_active, notified)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
                         """,
                         (
                             item["job_hash"],
                             item["title"],
                             item["source"],
                             item.get("category", "PILOT"),
+                            item.get("location"),
                             item["url"],
                             item.get("deadline"),
                             item.get("summary"),
