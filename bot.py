@@ -12,6 +12,9 @@ from config import (
     CHECK_INTERVAL_MINUTES,
     LOG_LEVEL,
     BOT_NAME,
+    ENABLE_CORPORATE_CAREERS,
+    ENABLE_UNIVERSITY,
+    ENABLE_ETHIOJOBS,
 )
 from database.db import Database
 from scrapers.base import VacancyItem
@@ -33,11 +36,13 @@ class AvaitorApp:
     def __init__(self):
         self.db = Database(DATABASE_PATH)
         self.notifier = TelegramNotifier()
-        self.scrapers = [
-            EthiopianCareersScraper(),
-            EAUScraper(),
-            EthiojobsScraper(),
-        ]
+        self.scrapers = []
+        if ENABLE_CORPORATE_CAREERS:
+            self.scrapers.append(EthiopianCareersScraper())
+        if ENABLE_UNIVERSITY:
+            self.scrapers.append(EAUScraper())
+        if ENABLE_ETHIOJOBS:
+            self.scrapers.append(EthiojobsScraper())
         # Auto-subscribe default chat id if configured in .env
         if TELEGRAM_CHAT_ID:
             self.db.add_subscriber(TELEGRAM_CHAT_ID, username="Admin", first_name="Admin", track="ALL")

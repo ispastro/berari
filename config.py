@@ -38,6 +38,11 @@ ET_CAREERS_URL = "https://corporate.ethiopianairlines.com/AboutEthiopian/careers
 ET_UNIVERSITY_URL = "https://eau.edu.et"
 ET_ETHIOJOBS_URL = "https://www.ethiojobs.net/jobs-in-ethiopia/ethiopian-airlines-group/"
 
+# Scraper Enable Toggles (Default: Corporate Careers Only)
+ENABLE_CORPORATE_CAREERS = os.getenv("ENABLE_CORPORATE_CAREERS", "true").lower() == "true"
+ENABLE_UNIVERSITY = os.getenv("ENABLE_UNIVERSITY", "false").lower() == "true"
+ENABLE_ETHIOJOBS = os.getenv("ENABLE_ETHIOJOBS", "false").lower() == "true"
+
 # HTTP Headers to mimic regular browser navigation
 DEFAULT_HEADERS = {
     "User-Agent": (
